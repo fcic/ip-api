@@ -82,3 +82,35 @@ export function parseAcceptLanguage(header = '') {
     .map(x => x.trim())
     .filter(Boolean)
 }
+
+// Cookie helpers
+export function parseCookies(cookieHeader = '') {
+  const map = new Map()
+  cookieHeader.split(';').forEach(part => {
+    const idx = part.indexOf('=')
+    if (idx > -1) {
+      const k = part.slice(0, idx).trim()
+      const v = part.slice(idx + 1).trim()
+      if (k) map.set(k, v)
+    }
+  })
+  return map
+}
+
+export function randomIdHex(byteLength = 16) {
+  const buf = new Uint8Array(byteLength)
+  crypto.getRandomValues(buf)
+  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function sha256Hex(input) {
+  const data = new TextEncoder().encode(String(input))
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  const bytes = new Uint8Array(digest)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function buildClientId({ ip, uaRaw, acceptLanguage, secChUa, secChUaMobile, secChUaPlatform }) {
+  const basis = [ip || '', uaRaw || '', acceptLanguage || '', secChUa || '', secChUaMobile || '', secChUaPlatform || ''].join('|')
+  return sha256Hex(basis)
+}
