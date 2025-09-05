@@ -51,7 +51,7 @@ export default {
       const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
 
       // Deterministic client id based on stable request signals
-      const clientId = await buildClientId({ ip, uaRaw, acceptLanguage: acceptLangRaw, secChUa, secChUaMobile, secChUaPlatform })
+      const clientId = await buildClientId({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
 
       // Cookie-based ephemeral id
       const cookies = parseCookies(request.headers.get('cookie') || '')
@@ -91,25 +91,15 @@ export default {
       return new Response(JSON.stringify(data, null, 2), { headers })
     }
 
-    if (pathname === '/4') {
-      return new Response(ipv4 || '', { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+
+    if (pathname === '/id') {
+      const acceptLangRaw = request.headers.get('accept-language') || ''
+      const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
+      const clientId = await buildClientId({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
+      return new Response(clientId, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
     }
 
-    if (pathname === '/6') {
-      return new Response(ipv6 || '', { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
-    }
-
-    if (pathname === '/hostname') {
-      // HTTP cannot determine the client's device hostname. Expose any forwarded hostname header if present.
-      const hostname = request.headers.get('x-client-hostname') || ''
-      return new Response(hostname, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
-    }
-
-    if (pathname === '/localip') {
-      // Not truly the client's LAN IP; best-effort via proxies (e.g., Cloudflare Pseudo-IPv4 if enabled)
-      const localIp = request.headers.get('cf-pseudo-ipv4') || ''
-      return new Response(localIp, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
-    }
+  
 
   return new Response(ip || '', {
       headers: {

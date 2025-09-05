@@ -110,7 +110,22 @@ export async function sha256Hex(input) {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export async function buildClientId({ ip, uaRaw, acceptLanguage, secChUa, secChUaMobile, secChUaPlatform }) {
-  const basis = [ip || '', uaRaw || '', acceptLanguage || '', secChUa || '', secChUaMobile || '', secChUaPlatform || ''].join('|')
+export function getPrimaryLanguage(acceptLanguage = '') {
+  const first = (acceptLanguage || '').split(',')[0]?.trim() || ''
+  return first.split(';')[0]?.trim().toLowerCase() || ''
+}
+
+// Cross-browser (same PC) oriented ID: rely on IP + primary language + platform only
+// Notes: This is not a perfect machine identifier; it may collide for different devices behind the same public IP.
+export async function buildClientId({ ip, acceptLanguage, secChUaPlatform }) {
+  const lang = getPrimaryLanguage(acceptLanguage)
+  const basis = [ip || '', lang || '', (secChUaPlatform || '').toLowerCase()].join('|')
   return sha256Hex(basis)
 }
+
+//diff explorer diff id
+// export async function buildClientId({ ip, uaRaw, acceptLanguage, secChUa, secChUaMobile, secChUaPlatform }) {
+//   const basis = [ip || '', uaRaw || '', acceptLanguage || '', secChUa || '', secChUaMobile || '', secChUaPlatform || ''].join('|')
+//   return sha256Hex(basis)
+// }
+
