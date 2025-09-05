@@ -50,8 +50,10 @@ export default {
       const secChUaMobile = request.headers.get('sec-ch-ua-mobile') || ''
       const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
 
+
       // Deterministic client id based on stable request signals
-      const clientId = await buildClientId2({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
+      const clientId = await buildClientId({ ip, uaRaw, acceptLanguage: acceptLangRaw, secChUa, secChUaMobile, secChUaPlatform })
+      const clientId2 = await buildClientId2({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
 
       // Cookie-based ephemeral id
       const cookies = parseCookies(request.headers.get('cookie') || '')
@@ -80,6 +82,7 @@ export default {
         acceptLanguage: acceptLang,
         localIp, // best-effort; true LAN IP is not available via HTTP
         clientId,
+        clientId2,
         cookieId,
       }
       const headers = {
