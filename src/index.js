@@ -1,4 +1,4 @@
-import { getFlag, extractClientIPs, parseUserAgent, parseAcceptLanguage, parseCookies, randomIdHex, buildClientId } from './utils'
+import { getFlag, extractClientIPs, parseUserAgent, parseAcceptLanguage, parseCookies, randomIdHex, buildClientId2 } from './utils'
 import { CORS_HEADERS } from './config'
 
 export default {
@@ -51,7 +51,7 @@ export default {
       const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
 
       // Deterministic client id based on stable request signals
-      const clientId = await buildClientId({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
+      const clientId = await buildClientId2({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
 
       // Cookie-based ephemeral id
       const cookies = parseCookies(request.headers.get('cookie') || '')
@@ -91,11 +91,18 @@ export default {
       return new Response(JSON.stringify(data, null, 2), { headers })
     }
 
-
     if (pathname === '/id') {
       const acceptLangRaw = request.headers.get('accept-language') || ''
       const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
       const clientId = await buildClientId({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
+      return new Response(clientId, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+    }
+
+
+    if (pathname === '/id2') {
+      const acceptLangRaw = request.headers.get('accept-language') || ''
+      const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
+      const clientId = await buildClientId2({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
       return new Response(clientId, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
     }
 

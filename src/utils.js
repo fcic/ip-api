@@ -115,17 +115,19 @@ export function getPrimaryLanguage(acceptLanguage = '') {
   return first.split(';')[0]?.trim().toLowerCase() || ''
 }
 
+
+
+//diff explorer diff id
+export async function buildClientId({ ip, uaRaw, acceptLanguage, secChUa, secChUaMobile, secChUaPlatform }) {
+  const basis = [ip || '', uaRaw || '', acceptLanguage || '', secChUa || '', secChUaMobile || '', secChUaPlatform || ''].join('|')
+  return sha256Hex(basis)
+}
+
+
 // Cross-browser (same PC) oriented ID: rely on IP + primary language + platform only
 // Notes: This is not a perfect machine identifier; it may collide for different devices behind the same public IP.
-export async function buildClientId({ ip, acceptLanguage, secChUaPlatform }) {
+export async function buildClientId2({ ip, acceptLanguage, secChUaPlatform }) {
   const lang = getPrimaryLanguage(acceptLanguage)
   const basis = [ip || '', lang || '', (secChUaPlatform || '').toLowerCase()].join('|')
   return sha256Hex(basis)
 }
-
-//diff explorer diff id
-// export async function buildClientId({ ip, uaRaw, acceptLanguage, secChUa, secChUaMobile, secChUaPlatform }) {
-//   const basis = [ip || '', uaRaw || '', acceptLanguage || '', secChUa || '', secChUaMobile || '', secChUaPlatform || ''].join('|')
-//   return sha256Hex(basis)
-// }
-
