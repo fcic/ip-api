@@ -1,15 +1,13 @@
-import { getFlag } from './utils'
+import { getFlag, extractClientIPs, parseUserAgent, parseAcceptLanguage } from './utils'
 import { CORS_HEADERS } from './config'
 
 export default {
   fetch(request) {
-    const ip = request.headers.get('cf-connecting-ipv6') || request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip')
-    const ipv4 = request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip')
-    const ipv6 = request.headers.get('cf-connecting-ipv6')
+    const { ip, ipv4, ipv6 } = extractClientIPs(request)
     const { pathname } = new URL(request.url)
     console.log(ip, pathname)
-    
-    // 收集地理位置和客户端信息
+
+    // Common geo extraction
     const country = request.cf?.country || request.headers.get('cf-ipcountry')
     const colo = request.headers.get('cf-ray')?.split('-')[1]
     const geo = {
@@ -22,12 +20,7 @@ export default {
       longitude: request.cf?.longitude || request.headers.get('cf-iplongitude'),
       asOrganization: request.cf?.asOrganization || request.headers.get('x-asn'),
     }
-    
-    // 客户端信息
-    const userAgent = request.headers.get('user-agent')
-    const accept = request.headers.get('accept-language')
-    
-    // 检查请求路径并返回相应信息
+
     if (pathname === '/geo') {
       console.log(geo)
       return Response.json({
@@ -39,55 +32,59 @@ export default {
           'x-client-ip': ip
         }
       })
-    } else if (pathname === '/all') {
-      // 返回所有可用的客户端信息
-      return Response.json({
+    }
+
+    if (pathname === '/all') {
+      const ua = parseUserAgent(request.headers.get('user-agent') || '')
+      const acceptLang = parseAcceptLanguage(request.headers.get('accept-language') || '')
+      const hostname = request.headers.get('x-forwarded-host') || request.headers.get('host')
+      const localIp = request.headers.get('cf-pseudo-ipv4') || null
+      const tlsVersion = request.cf?.tlsVersion
+      const coloId = request.cf?.colo || geo.region
+      const protocol = new URL(request.url).protocol.replace(':','')
+
+      const data = {
+        ip,
         ipv4,
         ipv6,
         geo,
-        userAgent,
-        acceptLanguage: accept,
-        headers: Object.fromEntries([...request.headers]),
-        cf: request.cf || {},
-      }, {
-        headers: {
-          ...CORS_HEADERS,
-          'x-client-ip': ip
-        }
-      })
-    } else if (pathname === '/4') {
-      // 只返回IPv4地址
-      return new Response(ipv4 || "No IPv4 detected", {
-        headers: {
-          ...CORS_HEADERS,
-          'x-client-ip': ipv4 || ip
-        }
-      })
-    } else if (pathname === '/6') {
-      // 只返回IPv6地址
-      return new Response(ipv6 || "No IPv6 detected", {
-        headers: {
-          ...CORS_HEADERS,
-          'x-client-ip': ipv6 || ip
-        }
-      })
-    } else if (pathname === '/hostname' || pathname === '/localip') {
-      // 这些信息需要客户端JS获取，返回帮助信息
-      return Response.json({
-        error: "This information requires client-side JavaScript",
-        message: "To get " + (pathname === '/hostname' ? "hostname" : "local IP") + ", you need to use client-side JavaScript",
-        example: pathname === '/hostname' ? 
-          "window.location.hostname" : 
-          "Use RTCPeerConnection to detect local IPs"
-      }, {
+        host: hostname,
+        protocol,
+        tlsVersion,
+        colo: coloId,
+        headers: Object.fromEntries(request.headers.entries()),
+        userAgent: ua,
+        acceptLanguage: acceptLang,
+        localIp, // best-effort; true LAN IP is not available via HTTP
+      }
+      return Response.json(data, {
         headers: {
           ...CORS_HEADERS,
           'x-client-ip': ip
         }
       })
     }
-    
-    // 默认返回IP地址
+
+    if (pathname === '/4') {
+      return new Response(ipv4 || '', { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+    }
+
+    if (pathname === '/6') {
+      return new Response(ipv6 || '', { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+    }
+
+    if (pathname === '/hostname') {
+      // HTTP cannot determine the client's device hostname. Expose any forwarded hostname header if present.
+      const hostname = request.headers.get('x-client-hostname') || ''
+      return new Response(hostname, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+    }
+
+    if (pathname === '/localip') {
+      // Not truly the client's LAN IP; best-effort via proxies (e.g., Cloudflare Pseudo-IPv4 if enabled)
+      const localIp = request.headers.get('cf-pseudo-ipv4') || ''
+      return new Response(localIp, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
+    }
+
     return new Response(ip, {
       headers: {
         ...CORS_HEADERS,
