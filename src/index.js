@@ -1,4 +1,4 @@
-import { getFlag, extractClientIPs, parseUserAgent, parseAcceptLanguage, parseCookies, randomIdHex, buildClientId2 } from './utils'
+import { getFlag, extractClientIPs, parseUserAgent, parseAcceptLanguage, parseCookies, randomIdHex, buildClientId, buildClientId2 } from './utils'
 import { CORS_HEADERS } from './config'
 
 export default {
@@ -92,9 +92,12 @@ export default {
     }
 
     if (pathname === '/id') {
+      const uaRaw = request.headers.get('user-agent') || ''
       const acceptLangRaw = request.headers.get('accept-language') || ''
+      const secChUa = request.headers.get('sec-ch-ua') || ''
+      const secChUaMobile = request.headers.get('sec-ch-ua-mobile') || ''
       const secChUaPlatform = request.headers.get('sec-ch-ua-platform') || ''
-      const clientId = await buildClientId({ ip, acceptLanguage: acceptLangRaw, secChUaPlatform })
+      const clientId = await buildClientId({ ip, uaRaw, acceptLanguage: acceptLangRaw, secChUa, secChUaMobile, secChUaPlatform })
       return new Response(clientId, { headers: { ...CORS_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'x-client-ip': ip } })
     }
 
